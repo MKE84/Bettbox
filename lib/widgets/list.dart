@@ -635,14 +635,21 @@ class ContinuousListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFirst = reversed ? index == count - 1 : index == 0;
     final isLast = reversed ? index == 0 : index == count - 1;
+    final isLight = context.colorScheme.brightness == Brightness.light;
     final dividerColor = context.colorScheme.outlineVariant.withValues(
-      alpha: context.colorScheme.brightness == Brightness.light ? 0.6 : 0.45,
+      alpha: isLight ? 0.6 : 0.45,
     );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: context.colorScheme.surfaceContainer,
+        color: isLight
+            ? Color.lerp(
+                context.colorScheme.surface,
+                context.colorScheme.surfaceContainerLowest,
+                0.5,
+              )
+            : context.colorScheme.surfaceContainer,
         borderRadius: BorderRadius.vertical(
           top: isFirst ? const Radius.circular(20) : Radius.zero,
           bottom: isLast ? const Radius.circular(20) : Radius.zero,

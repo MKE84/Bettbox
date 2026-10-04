@@ -138,8 +138,26 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList> {
     }
 
     final pixels = _scrollController.offset;
+    if (pixels < 0) {
+      if (_headerStateNotifier.value != null) {
+        _headerStateNotifier.value = null;
+      }
+      return;
+    }
+
     final index = _headerOffsets.findInterval(pixels);
     if (index < 0 || index >= widget.groups.length) {
+      if (_headerStateNotifier.value != null) {
+        _headerStateNotifier.value = null;
+      }
+      return;
+    }
+
+    final group = widget.groups[index];
+    final isExpand = widget.currentUnfoldSet.contains(group.name);
+    final sortedProxies =
+        isExpand ? _getGroupSortedProxies(group) : const <Proxy>[];
+    if (!isExpand || sortedProxies.isEmpty) {
       if (_headerStateNotifier.value != null) {
         _headerStateNotifier.value = null;
       }
@@ -279,6 +297,25 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList> {
   @override
   Widget build(BuildContext context) {
     final isMobileView = ref.watch(isMobileViewProvider);
+    final isLight = context.colorScheme.brightness == Brightness.light;
+    final pureBlack = ref.watch(
+      themeSettingProvider.select((s) => s.pureBlack),
+    );
+    final headerBgColor = isMobileView
+        ? context.colorScheme.surfaceContainer
+        : (isLight
+            ? (Color.lerp(
+                context.colorScheme.surfaceContainer,
+                context.colorScheme.surfaceContainerLowest,
+                0.85,
+              ) ?? context.colorScheme.surfaceContainer)
+            : (!pureBlack
+                ? (Color.lerp(
+                    context.colorScheme.surfaceContainer,
+                    context.colorScheme.surfaceContainerHigh,
+                    0.35,
+                  ) ?? context.colorScheme.surfaceContainer)
+                : context.colorScheme.surfaceContainer));
     final autoStickyHeader = ref.watch(
       proxiesStyleSettingProvider.select((s) => s.autoStickyHeader),
     );
@@ -395,7 +432,7 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList> {
                   return Transform.translate(
                     offset: Offset(0, -headerState.offset),
                     child: Container(
-                      color: context.colorScheme.surface,
+                      color: headerBgColor,
                       padding: const EdgeInsets.only(
                         top: 16,
                         left: 16,

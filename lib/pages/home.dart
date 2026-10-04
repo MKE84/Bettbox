@@ -76,80 +76,91 @@ class _HomePageState extends State<HomePage> {
         focusNav();
         return true;
       },
-      child: Material(
-        color: context.colorScheme.surface,
+      child: Consumer(
+        builder: (context, ref, child) {
+          final (isMobile, navigationItems, currentIndex) = ref.watch(
+            navigationStateProvider.select(
+              (state) => (
+                state.viewMode == ViewMode.mobile,
+                state.navigationItems,
+                state.currentIndex,
+              ),
+            ),
+          );
+          final bottomNavigationBar = globalState.isAndroidTV
+              ? _buildTVBottomNavBar(
+                  context,
+                  navigationItems: navigationItems,
+                  currentIndex: currentIndex,
+                )
+              : GoogleBottomNavBar(
+                  navigationItems: navigationItems,
+                  selectedIndex: currentIndex,
+                  onTabChange: (index) {
+                    globalState.appController.toPage(
+                      navigationItems[index].label,
+                    );
+                  },
+                );
+          if (child == null) {
+            return const SizedBox();
+          }
+          Widget bodyWidget = child;
+          if (isMobile) {
+            final pageContent = MediaQuery.removePadding(
+              removeTop: false,
+              removeBottom: false,
+              removeLeft: true,
+              removeRight: true,
+              context: context,
+              child: child,
+            );
+            final navBar = MediaQuery.removePadding(
+              removeTop: true,
+              removeBottom: false,
+              removeLeft: true,
+              removeRight: true,
+              context: context,
+              child: bottomNavigationBar,
+            );
+            bodyWidget = Stack(
+              children: [
+                Positioned.fill(child: pageContent),
+                Positioned(left: 0, right: 0, bottom: 0, child: navBar),
+              ],
+            );
+          }
+          return Material(
+            color: isMobile
+                ? context.colorScheme.surfaceContainer
+                : Colors.transparent,
+            child: bodyWidget,
+          );
+        },
         child: Consumer(
-          builder: (context, ref, child) {
-            final state = ref.watch(navigationStateProvider);
-            final isMobile = state.viewMode == ViewMode.mobile;
-            final navigationItems = state.navigationItems;
-            final currentIndex = state.currentIndex;
-            final bottomNavigationBar = globalState.isAndroidTV
-                ? _buildTVBottomNavBar(
-                    context,
-                    navigationItems: navigationItems,
-                    currentIndex: currentIndex,
-                  )
-                : GoogleBottomNavBar(
-                    navigationItems: navigationItems,
-                    selectedIndex: currentIndex,
-                    onTabChange: (index) {
-                      globalState.appController.toPage(
-                        navigationItems[index].label,
-                      );
-                    },
-                  );
-            if (isMobile) {
-              final pageContent = MediaQuery.removePadding(
-                removeTop: false,
-                removeBottom: false,
-                removeLeft: true,
-                removeRight: true,
-                context: context,
-                child: child!,
-              );
-              final navBar = MediaQuery.removePadding(
-                removeTop: true,
-                removeBottom: false,
-                removeLeft: true,
-                removeRight: true,
-                context: context,
-                child: bottomNavigationBar,
-              );
-              return Stack(
-                children: [
-                  Positioned.fill(child: pageContent),
-                  Positioned(left: 0, right: 0, bottom: 0, child: navBar),
-                ],
-              );
-            }
-            return child!;
+          builder: (_, ref, _) {
+            final navigationItems = ref
+                .watch(currentNavigationItemsStateProvider)
+                .value;
+            final isMobile = ref.watch(isMobileViewProvider);
+            return _HomePageView(
+              navigationItems: navigationItems,
+              pageBuilder: (_, index) {
+                final navigationItem = navigationItems[index];
+                final navigationView = navigationItem.builder(context);
+                return KeepScope(
+                  key: ValueKey(navigationItem.label),
+                  keep: navigationItem.keep,
+                  child: isMobile
+                      ? navigationView
+                      : Navigator(
+                          pages: [MaterialPage(child: navigationView)],
+                          onDidRemovePage: (_) {},
+                        ),
+                );
+              },
+            );
           },
-          child: Consumer(
-            builder: (_, ref, _) {
-              final navigationItems = ref
-                  .watch(currentNavigationItemsStateProvider)
-                  .value;
-              final isMobile = ref.watch(isMobileViewProvider);
-              return _HomePageView(
-                navigationItems: navigationItems,
-                pageBuilder: (_, index) {
-                  final navigationItem = navigationItems[index];
-                  final navigationView = navigationItem.builder(context);
-                  return KeepScope(
-                    key: ValueKey(navigationItem.label),
-                    keep: navigationItem.keep,
-                    child: isMobile
-                        ? navigationView
-                        : Navigator(
-                            pages: [MaterialPage(child: navigationView)],
-                            onDidRemovePage: (_) {},
-                          ),
-                  );
-                },
-              );
-            },
-          ),
         ),
       ),
     );
