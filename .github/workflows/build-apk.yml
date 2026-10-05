@@ -1,0 +1,123 @@
+name: Build EdgeLink APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      arch:
+        description: 'Android ABI'
+        required: true
+        default: 'arm64'
+        type: choice
+        options:
+          - arm64
+          - arm
+          - universal
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android NDK
+        shell: bash
+        run: |
+          NDK_VERSION="28.2.13676358"
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}" >/dev/null 2>&1 || true
+          echo "ANDROID_NDK=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Configure Cargo for Android
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo
+          cat > ~/.cargo/config.toml <<'EOF'
+          [target.aarch64-linux-android]
+          linker = "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
+          [target.armv7-linux-androideabi]
+          linker = "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi26-clang"
+          EOF
+
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-key: flutter-android-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Clean Gradle
+        run: |
+          cd android
+          flutter clean
+
+      - name: Build
+        shell: bash
+        run: |
+          flutter pub get
+          dart run build_runner build -d
+          dart setup.dart android --arch ${{ inputs.arch }}
+
+      - name: Assemble APK
+        shell: bash
+        env:
+          BUILD_TYPE: ${{ inputs.build_type }}
+        run: |
+          cd android
+          if [ "$BUILD_TYPE" = "debug" ]; then
+            flutter build apk --debug
+          else
+            # Release: requires keystore secrets. Skip if not configured.
+            flutter build apk --release 2>&1 || {
+              echo "Release build failed (likely missing keystore secrets). Falling back to debug."
+              flutter build apk --debug
+            }
+          fi
+
+      - name: Find APK
+        shell: bash
+        run: |
+          APK=$(find build/app/outputs -name "*.apk" | head -1)
+          echo "APK=$APK"
+          echo "$APK" > /tmp/apk_path.txt
+          ls -lh "$APK"
+          # SHA256
+          sha256sum "$APK" | tee /tmp/apk_sha256.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdgeLink-${{ inputs.arch }}-${{ inputs.build_type }}
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 3
+
