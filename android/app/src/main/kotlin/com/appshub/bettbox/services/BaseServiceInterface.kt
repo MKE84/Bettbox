@@ -29,7 +29,7 @@ interface BaseServiceInterface {
     suspend fun startForeground()
 }
 
-suspend fun Service.createBettboxNotificationBuilder(
+suspend fun Service.createEdgeLinkNotificationBuilder(
     isSuspended: Boolean = GlobalState.isSmartStopped,
     isHighPriority: Boolean = GlobalState.isNotificationHighPriority
 ): NotificationCompat.Builder =
@@ -55,7 +55,7 @@ suspend fun Service.createBettboxNotificationBuilder(
             PendingIntent.FLAG_UPDATE_CURRENT
         }
         val pendingIntent = withContext(Dispatchers.Main) {
-            PendingIntent.getActivity(this@createBettboxNotificationBuilder, 0, intent, flags)
+            PendingIntent.getActivity(this@createEdgeLinkNotificationBuilder, 0, intent, flags)
         }
 
         val isDark = targetComponent == darkComponent
@@ -76,12 +76,12 @@ suspend fun Service.createBettboxNotificationBuilder(
         }
         val priority = if (isSuspended || isHighPriority) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW
 
-        NotificationCompat.Builder(this@createBettboxNotificationBuilder, channelId).apply {
+        NotificationCompat.Builder(this@createEdgeLinkNotificationBuilder, channelId).apply {
             setSmallIcon(R.drawable.ic)
             if (largeIconBitmap != null) {
                 setLargeIcon(largeIconBitmap)
             }
-            setContentTitle("Bettbox")
+            setContentTitle("EdgeLink")
             setContentIntent(pendingIntent)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -113,9 +113,9 @@ fun Service.ensureNotificationChannel(
             else -> NotificationManager.IMPORTANCE_LOW
         }
         val name = when {
-            isSuspended -> "Bettbox Suspended Service"
-            isHighPriority -> "Bettbox High Priority Service"
-            else -> "Bettbox Service"
+            isSuspended -> "EdgeLink Suspended Service"
+            isHighPriority -> "EdgeLink High Priority Service"
+            else -> "EdgeLink Service"
         }
         val newChannel = NotificationChannel(channelId, name, importance).apply {
             setShowBadge(false)

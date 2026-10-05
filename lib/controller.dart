@@ -451,7 +451,7 @@ class AppController {
       final profile = profiles
           .where((e) => e.id == currentProfileId)
           .firstOrNull;
-      final profileName = profile?.label ?? 'Bettbox';
+      final profileName = profile?.label ?? 'EdgeLink';
       final speedInfo = traffic.toString();
       await vpn_service.service?.updateNotificationSpeed(
         profileName,
@@ -1162,7 +1162,7 @@ class AppController {
           finalSuffix = 'windows-amd64-compatible-portable.zip';
         }
         downloadUrl =
-            'https://github.com/$repository/releases/download/$tagName/Bettbox-$versionWithoutV-$finalSuffix';
+            'https://github.com/$repository/releases/download/$tagName/EdgeLink-$versionWithoutV-$finalSuffix';
       }
 
       globalState.openUrl(downloadUrl);
@@ -1859,7 +1859,7 @@ class AppController {
 
       // Add marker file
       final markerData = json.encode({
-        'app': 'Bettbox',
+        'app': 'EdgeLink',
         'version': '1.0',
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
@@ -2027,22 +2027,22 @@ class AppController {
 
     final homeDirPath = await appPath.homeDirPath;
 
-    // Check for Bettbox marker
+    // Check for EdgeLink marker
     final hasBettboxMarker = archive.files.any(
       (file) => file.name == '.bettbox_marker',
     );
 
     if (hasBettboxMarker) {
-      // Bettbox backup
-      await _recoveryBettboxBackup(archive, recoveryOption, homeDirPath);
+      // EdgeLink backup
+      await _recoveryEdgeLinkBackup(archive, recoveryOption, homeDirPath);
     } else {
       // Legacy backup
       await _recoveryLegacyBackup(archive, recoveryOption, homeDirPath);
     }
   }
 
-  /// Restore Bettbox
-  Future<void> _recoveryBettboxBackup(
+  /// Restore EdgeLink
+  Future<void> _recoveryEdgeLinkBackup(
     Archive archive,
     RecoveryOption recoveryOption,
     String homeDirPath,
